@@ -16,12 +16,22 @@ The NOMP algorithm will be open-sourced later after further organization.
 
 The two main networks in this code are used for CSI fusion and anomaly detection. You can see how these networks work together in the `main.py` file. We hope this will be helpful to you.
 
-## Citation
+## 🔗 Citation
 
-Please cite the paper as follows:
+If you find our work helpful, please cite:
+```bibtex
+@ARTICLE{10579753,
+  author={Li, Yan and Yang, Jie and Shih, Shang-Ling and Shih, Wan-Ting and Wen, Chao-Kai and Jin, Shi},
+  journal={IEEE Internet of Things Journal}, 
+  title={Efficient IoT Devices Localization Through Wi-Fi CSI Feature Fusion and Anomaly Detection}, 
+  year={2024},
+  volume={},
+  number={},
+  pages={1-1},
+  keywords={Location awareness;Internet of Things;Wireless fidelity;Smart phones;Estimation;Accuracy;Trajectory;IoT devices localization;channel state information;artificial intelligence;anomaly detection},
+  doi={10.1109/JIOT.2024.3421577}}
+、、、
 
-Efficient IoT Devices Localization Through Wi-Fi  CSI Feature Fusion and Anomaly Detection  
-Yan Li, Jie Yang, Shang-Ling Shih, Wan-Ting Shih, Chao-Kai Wen, Fellow, IEEE, and Shi Jin, Fellow, IEEE  
 
 ## Dataset
 
