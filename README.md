@@ -40,7 +40,7 @@ If you find our work helpful, please cite:
 We have also constructed a dataset available at:  
 [https://github.com/CoLoSNet/Extractor](https://github.com/CoLoSNet/Extractor)  
 This dataset contains CSI information collected in an indoor office environment. Our network is fully trained on this dataset and shows excellent performance, demonstrating the simulation quality of the dataset.
-可以根据你自己的需要调整接收天线配置，而且给出了NOMP算法的详细步骤。
+You can adjust the receiving antenna configuration as needed, and detailed steps for the NOMP algorithm are provided.
 ## Contact
 
 For any questions or discussions, please feel free to contact me via email: leeyan@seu.edu.cn
