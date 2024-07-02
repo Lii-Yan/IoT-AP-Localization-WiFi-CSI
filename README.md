@@ -30,7 +30,7 @@ If you find our work helpful, please cite:
   pages={1-1},
   keywords={Location awareness;Internet of Things;Wireless fidelity;Smart phones;Estimation;Accuracy;Trajectory;IoT devices localization;channel state information;artificial intelligence;anomaly detection},
   doi={10.1109/JIOT.2024.3421577}}
-、、、
+```
 
 
 ## Dataset
