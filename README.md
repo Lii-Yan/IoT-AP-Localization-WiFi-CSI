@@ -1,20 +1,23 @@
-# IoT-AP-Localization-WiFi-CSI
+# 📡 IoT-AP-Localization-WiFi-CSI
 **Efficient IoT Devices/AP Localization Through Wi-Fi CSI Feature Fusion and Anomaly Detection**
 
 This repository contains the reproduction code for the IEEE Internet of Things Journal paper:  
 *Efficient IoT Devices Localization Through Wi-Fi CSI Feature Fusion and Anomaly Detection*.
 
-## Introduction
+## 📝 Introduction
 
-This project provides the reproduction code for the paper. Readers should mainly focus on the `model.py` file and refer to the input data described in the paper. The code can be run directly after installing the dependencies listed in `requirements.txt`.
+This project provides the code to reproduce the results presented in the paper. The main code resides in the `model.py` file. Ensure you have the required dependencies listed in `requirements.txt` installed before running the code.
 
-If you want to create your own dataset based on CSI, you can use your own CSI data for feature extraction using different algorithms. Essentially, the goal is to extract features from multipath channel information, which will yield similar results.
+The code uses MATLAB to generate a trajectory's CSI and applies the NOMP algorithm for parameter extraction. It then segments the trajectory into multiple segments using a sliding window of length 5 and step size 1, processing them with the network. If you wish to create your own dataset using different CSI parameter extraction methods, you can use your own CSI data for feature extraction. Ensure the data is formatted correctly for network input.
 
-The NOMP algorithm will be open-sourced later after further organization.
+## 🔍 NOMP Algorithm Parameter Extraction
 
-## Networks
+CSI data requires preprocessing, specifically using the NOMP algorithm to extract multipath channel parameters. Detailed extraction methods can be found here:  
+[CSI Extraction](https://github.com/CoLoSNet/Extractor/blob/main/functions/CSI_Extraction.m)
 
-The two main networks in this code are used for CSI fusion and anomaly detection. You can see how these networks work together in the `main.py` file. We hope this will be helpful to you.
+## 🤖 Networks
+
+The two main networks in this code are used for CSI fusion and anomaly detection. The `main.py` file demonstrates how these networks work together.
 
 ## 🔗 Citation
 
@@ -32,13 +35,12 @@ If you find our work helpful, please cite:
   doi={10.1109/JIOT.2024.3421577}}
 ```
 
-
-## Dataset
+## 📁 Dataset
 
 We have also constructed a dataset available at:  
 [https://github.com/CoLoSNet/Extractor](https://github.com/CoLoSNet/Extractor)  
 This dataset contains CSI information collected in an indoor office environment. Our network is fully trained on this dataset and shows excellent performance, demonstrating the simulation quality of the dataset.
-
+可以根据你自己的需要调整接收天线配置，而且给出了NOMP算法的详细步骤。
 ## Contact
 
 For any questions or discussions, please feel free to contact me via email: leeyan@seu.edu.cn
