@@ -1,33 +1,27 @@
-L=5
-#torch库：
+L = 5
+
+# Importing necessary libraries
 import torch
 from torch import nn
-from torch.autograd import Variable
 import torch.nn.functional as F
 from torch.utils.data.dataset import Dataset
 from torch.utils.data.dataloader import DataLoader
-import fnmatch
 from scipy.io import loadmat
 import numpy as np
-import random
-import os
-#个人库
-from model import CB_Bilstm,feature_extract,EncDecAD
-from tool import plot_cdf,data_divide
-import math
+import json
 
-def get_angle(val):
-    val=val.flatten().tolist()
-    sin_val, cos_val= val[0],val[1]
-    angle = math.atan2(sin_val, cos_val) * 180 / math.pi
-    angle = angle if angle >= 0 else 360 + angle
-    return angle
+# Importing custom modules
+from model import CB_Bilstm, feature_extract, EncDecAD
+from tool import plot_cdf, data_divide
 
-##网络设置
+## Network setup
 import datetime
+
 starttime = datetime.datetime.now()
 loss_func = torch.nn.MSELoss()
-# baseline网络
+
+
+# Baseline neural network definition
 class nnNet(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super(nnNet, self).__init__()
@@ -39,135 +33,199 @@ class nnNet(nn.Module):
         out = self.fc1(x)
         out = self.relu(out)
         out = self.fc2(out)
-        out = out*2-1
+        out = out * 2 - 1  # Scaling output to [-1, 1]
         return out
 
 
-save_path='result_baseline/'
-model_baseline = nnNet(input_size=20, hidden_size =128, output_size=2)
-state_dict = torch.load(save_path+'CB_selected.pth',map_location=torch.device('cpu'))
+# Load pre-trained models for AP selection and estimation
+save_path = 'result_baseline_AP_selected/'
+AP_model_baseline = nnNet(input_size=20, hidden_size=128, output_size=2)
+state_dict = torch.load(save_path + 'CB_selected.pth', map_location=torch.device('cpu'))
+AP_model_baseline.load_state_dict(state_dict)
+
+save_path = 'APselected_result_estimate_L5/'
+AP_model_pre = CB_Bilstm(3, 128, 2, 1)
+state_dict = torch.load(save_path + 'CB_selected.pth', map_location=torch.device('cpu'))
+AP_model_pre.load_state_dict(state_dict)
+
+ext_place = 'APselected_result_estimate_L5/'
+AP_f_ext = feature_extract(input_size=3)
+pretrained_dict = torch.load(ext_place + 'CB_selected.pth', map_location=torch.device('cpu'))
+AP_f_ext.load_state_dict(pretrained_dict, strict=False)
+
+save_path = 'APselected_encdec_result_L5/'
+AP_model = EncDecAD(3, 3, 1)
+state_dict = torch.load(save_path + 'AD_selected.pth', map_location=torch.device('cpu'))
+AP_model.load_state_dict(state_dict)
+
+##########################################################################################
+# Robustness testing
+save_path = 'result_baseline/'
+model_baseline = nnNet(input_size=20, hidden_size=128, output_size=2)
+state_dict = torch.load(save_path + 'CB_selected.pth', map_location=torch.device('cpu'))
 model_baseline.load_state_dict(state_dict)
 
-#估计网络
-save_path='result_estimate_L'+str(L)+'/'
-model_pre = CB_Bilstm(3,128,2,1)
-state_dict = torch.load(save_path+'CB_selected_(0,1,5,6,7,9).pth',map_location=torch.device('cpu'))
+save_path = 'result_estimate_L' + str(L) + '/'
+model_pre = CB_Bilstm(3, 128, 2, 1)
+state_dict = torch.load(save_path + 'CB_selected_(0,1,5,6,7,9).pth', map_location=torch.device('cpu'))
 model_pre.load_state_dict(state_dict)
 
-#特征提取网络
-ext_place='result_estimate_L'+str(L)+'/'
-f_ext=feature_extract(input_size=3)
-pretrained_dict = torch.load(ext_place+'CB_selected_(0,1,5,6,7,9).pth',map_location=torch.device('cpu'))
+ext_place = 'result_estimate_L' + str(L) + '/'
+f_ext = feature_extract(input_size=3)
+pretrained_dict = torch.load(ext_place + 'CB_selected_(0,1,5,6,7,9).pth', map_location=torch.device('cpu'))
 f_ext.load_state_dict(pretrained_dict, strict=False)
 
-#特征重构网络
-save_path='encdec_result_L'+str(L)+ '/'
+save_path = 'encdec_result_L' + str(L) + '/'
 model = EncDecAD(3, 3, 1)
-state_dict = torch.load(save_path+'AD_selected_(0,1,5,6,7,9).pth',map_location=torch.device('cpu'))
+state_dict = torch.load(save_path + 'AD_selected_(0,1,5,6,7,9).pth', map_location=torch.device('cpu'))
 model.load_state_dict(state_dict)
 
+
 def getxy(name_dir):
-    # function:
+    """
+    Function to load data from .mat files and preprocess for neural network input.
+
+    Args:
+    - name_dir (str): Directory path containing the .mat file.
+
+    Returns:
+    - x (numpy array): Processed input features.
+    - y (numpy array): Processed output labels.
+    - traj_idx (numpy array): Trajectory indices.
+    """
     name = name_dir + '/traj_temp.mat'
     spam = loadmat(name)
     X = spam['feature']
     Y = spam['AOA'].reshape(-1)
-    tx=spam['tx'].reshape(-1)-1
+    tx = spam['tx'].reshape(-1) - 1
     Y1 = Y / 180 * np.pi
-    # X[:, -5:,:] = (np.sin(X[:, -5:,:])+1)/2
     y1 = np.sin(Y1)
     y2 = np.cos(Y1)
-    if X.ndim == 3:
-        X = np.expand_dims(X, axis=-1)  # 在最后一维添加一个维度
-        x = np.zeros([X.shape[0], 20, X.shape[-1]]).squeeze()
 
-        x[:, :10] = X[:, :10, tx,:].squeeze()
-        x[:, -10:-5] = (np.sin(X[:, -5:, tx,:].squeeze()) + 1) / 2
-        x[:, -5:] = (np.cos(X[:, -5:, tx,:].squeeze()) + 1) / 2
-        x = np.expand_dims(x, axis=-1)  # 在最后一维添加一个维度
+    if X.ndim == 3:
+        X = np.expand_dims(X, axis=-1)
+        x = np.zeros([X.shape[0], 20, X.shape[-1]]).squeeze()
+        x[:, :10] = X[:, :10, tx, :].squeeze()
+        x[:, -10:-5] = (np.sin(X[:, -5:, tx, :].squeeze()) + 1) / 2
+        x[:, -5:] = (np.cos(X[:, -5:, tx, :].squeeze()) + 1) / 2
+        x = np.expand_dims(x, axis=-1)
     else:
         x = np.zeros([X.shape[0], 20, X.shape[-1]])
         x[:, :10, :] = X[:, :10, tx, :].squeeze()
-        x[:, -10:-5:, :] = (np.sin(X[:, -5:, tx, :].squeeze()) + 1) / 2
+        x[:, -10:-5, :] = (np.sin(X[:, -5:, tx, :].squeeze()) + 1) / 2
         x[:, -5:, :] = (np.cos(X[:, -5:, tx, :].squeeze()) + 1) / 2
-    y = np.array([y1,y2]).transpose()
-    traj_idx=spam['traj_idx'].reshape(-1)
-    return x,y,traj_idx
 
-def getdata(name_dir):
-    name = name_dir + '/feature.mat'
-    spam = loadmat(name)
-    X = spam['feature_python']
-    if X.ndim == 2:
-        X = np.expand_dims(X, axis=-1)  # 在最后一维添加一个维度, 这个维度是mat文件维度为1会自动省略.
-    x = np.zeros([X.shape[0], 20, X.shape[-1]])
-    x[:, :10, :] = X[:, :10, :]
-    x[:, -10:-5:, :] = (np.sin(X[:, -5:, :]) + 1) / 2
-    x[:, -5:, :] = (np.cos(X[:, -5:, :]) + 1) / 2
-    return x#[5,20,分组数]
-# 数据载入：
-location='datamat/'
-data=[]
-mat_dir=location+''
-x = getdata(mat_dir)
-x = (torch.from_numpy(x.reshape(1, -1, 20,x.shape[-1]))).float().cpu()
-x = x.reshape(-1, 4, 5,x.shape[-1]).float().cpu()
+    y = np.array([y1, y2]).transpose()
+    traj_idx = spam['traj_idx'].reshape(-1)
+
+    return x, y, traj_idx
+
+
+# Data loading and processing
+location = 'traj/'
+data = []
+mat_dir = location + '/'
+x0, y0, traj_idx0 = getxy(mat_dir)
+x, y, traj_idx = x0, y0, traj_idx0
+
+# Convert to torch tensors
+traj_idx = np.array(traj_idx, dtype=np.float32)
+traj_idx = torch.from_numpy(traj_idx).float().cpu()
+
+x = (torch.from_numpy(x.reshape(1, -1, 20, x.shape[-1]))).float().cpu()
+y0 = (torch.from_numpy(y0.reshape(1, -1, 2))).float().cpu()
+y = (torch.from_numpy(y.reshape(1, -1, 2))).float().cpu()
+y = y.float().cpu()
+x = x.reshape(-1, 4, 5, x.shape[-1]).float().cpu()
+y = y.reshape(-1, 2).float().cpu()
+y0 = y0.reshape(-1, 2).float().cpu()
+
 x = x.unsqueeze(0)
+data = [x, y, y0, traj_idx]
 
-a=1
-data_x = x
+import math
 
-# 进入循环
-pre_angle_name = ['ad']
-threshold = 0.002
+
+def get_angle(val):
+    """
+    Utility function to calculate angle from sine and cosine values.
+
+    Args:
+    - val (numpy array): Array containing sine and cosine values.
+
+    Returns:
+    - angle (float): Calculated angle in degrees.
+    """
+    val = val.flatten().tolist()
+    sin_val, cos_val = val[0], val[1]
+    angle = math.atan2(sin_val, cos_val) * 180 / math.pi
+    angle = angle if angle >= 0 else 360 + angle
+    return angle
+
+
+data = data_divide(data)  # Assuming this function splits data into manageable parts
+
 pre_list = []
-for x_i in range(data_x.shape[-1]):
+for data_i in range(len(data)):
+    [x, y, y0, traj_idx] = data[data_i]
     pre_angle = [0]
-    x = data_x[...,x_i]
+    pre_angle_name = ['ad']
+    threshold = 0.002
 
-    # 按照能量进行区分
+    y = y.reshape(-1, 2)
+    pre_angle.append(get_angle(y))
+    pre_angle_name.append('true')
+
+    # Predictions based on different criteria
     sorted_data, sorted_indices = torch.sort(x[0, x.size(1) // 2, 0, :], descending=True)
     prediction = x[0, x.size(1) // 2, [-2, -1], sorted_indices[0]].reshape(-1, 2)
     prediction = prediction * 2 - 1
     pre_angle.append(get_angle(prediction))
     pre_angle_name.append('RSS')
-    # 按照时间进行区分
+
     sorted_data, sorted_indices = torch.sort(x[0, x.size(1) // 2, 1, :], descending=True)
     prediction = x[0, x.size(1) // 2, [-2, -1], sorted_indices[-1]].reshape(-1, 2)
     prediction = prediction * 2 - 1
     pre_angle.append(get_angle(prediction))
     pre_angle_name.append('time')
 
-    # 不进行剔除,baseline
     prediction = model_baseline(x[:, L // 2, :].reshape(-1, 20))
     pre_angle.append(get_angle(prediction))
     pre_angle_name.append('baseline')
 
-    # 不进行剔除,我们提出的网络
     prediction = model_pre(x)
     pre_angle.append(get_angle(prediction))
     pre_angle_name.append('network')
 
-    # 异常值剔除
     z = f_ext(x).float().cpu()
-    # 网络重构
     prediction = model(z).cpu()
     loss = loss_func(prediction, z).tolist()
-    print(loss)
-    if (loss < threshold):
+
+    if loss < threshold:
         pre_angle[0] = 1
-    print(pre_angle[0])
-    print('____________________________')
-    # 存成列表
+
+    y_temp = get_angle(y)
+
+    ku_temp = []
+    ku = np.array(x[0, x.size(1) // 2, 2:4, :].data.cpu()).transpose()
+    ku = torch.tensor(ku * 2 - 1)
+    for ku_i in range(5):
+        ku_temp.append(get_angle(ku[ku_i]))
+    ku_temp = np.array(ku_temp)
+
+    near = np.minimum(abs(ku_temp - y_temp), 360 - abs(ku_temp - y_temp))
+    min_index = np.argmin(near)
+    prediction = x[0, x.size(1) // 2, [-2, -1], min_index].reshape(-1, 2)
+    prediction = prediction * 2 - 1
+    pre_angle.append(get_angle(prediction))
+    pre_angle_name.append('near')
+
     pre_angle_dict = dict(zip(pre_angle_name, pre_angle))
     pre_list.append(pre_angle_dict)
-    # print(pre_angle_name)
-    # print(pre_angle)
-import json
 
-# 将字典保存为JSON文件
-with open("traj.json", "w") as f:
+# Save results to JSON files
+with open("traj/traj.json", "w") as f:
     json.dump(pre_list, f)
-# 将字典保存为JSON文件
-with open("traj_flag.json", "w") as f:
+
+with open("traj/traj_flag.json", "w") as f:
     json.dump(pre_list, f)
