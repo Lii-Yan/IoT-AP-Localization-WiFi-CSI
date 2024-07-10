@@ -2,7 +2,7 @@
 **Efficient IoT Devices/AP Localization Through Wi-Fi CSI Feature Fusion and Anomaly Detection**
 
 This repository contains the reproduction code for the IEEE Internet of Things Journal paper:  
-*Efficient IoT Devices Localization Through Wi-Fi CSI Feature Fusion and Anomaly Detection*.
+[Efficient IoT Devices Localization Through Wi-Fi CSI Feature Fusion and Anomaly Detection](https://ieeexplore.ieee.org/document/10579753).
 
 ## 📝 Introduction
 
